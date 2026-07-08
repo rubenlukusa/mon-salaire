@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mon Salaire — Calculateur</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <h1>💶 Mon Salaire</h1>
+  <button id="darkToggle" class="icon-btn" title="Mode sombre">🌙</button>
+</header>
+
+<div id="reminderBanner" class="reminder hidden"></div>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="calc">Calculatrice</button>
+  <button class="tab-btn" data-tab="hist">Historique</button>
+  <button class="tab-btn" data-tab="totaux">Totaux</button>
+  <button class="tab-btn" data-tab="budget">Budget & Épargne</button>
+</nav>
+
+<main>
+
+  <!-- ===================== CALCULATRICE ===================== -->
+  <section id="calc" class="tab-content active">
+    <div class="card">
+      <h2>Nouvelle semaine</h2>
+      <div class="grid2">
+        <label>Semaine du
+          <input type="date" id="dateDebut">
+        </label>
+        <label>au
+          <input type="date" id="dateFin">
+        </label>
+      </div>
+
+      <div class="grid2">
+        <label>Statut
+          <select id="statut">
+            <option value="etudiant">Étudiant (contingent)</option>
+            <option value="normal">Travailleur normal</option>
+          </select>
+        </label>
+        <label>Jours travaillés (auto)
+          <input type="text" id="joursTravaillesAuto" value="0" readonly>
+        </label>
+      </div>
+
+      <h3>Détail jour par jour</h3>
+      <p class="hint">Entre juste l'heure de début et de fin (+ pause) de chaque jour, le nombre d'heures et la part en heures supp (+50%) sont calculés automatiquement. Laisse vide les jours non travaillés.</p>
+      <p class="hint">⚠️ Règle appliquée : au-delà du seuil d'heures/jour ci-dessous, les heures passent en supplément majoré — c'est ce que tes vraies fiches de paie montrent (9h "normales" à chaque fois, peu importe l'heure de début). Si une future fiche de paie montre autre chose, ajuste le seuil dans les paramètres.</p>
+      <table id="dayTable" class="day-table">
+        <thead>
+          <tr><th>Jour</th><th>Début</th><th>Fin</th><th>Pause (min)</th><th>Heures</th><th>dont supp</th><th>Transport</th></tr>
+        </thead>
+        <tbody id="dayTableBody"></tbody>
+        <tfoot>
+          <tr>
+            <td>Total</td>
+            <td colspan="3"></td>
+            <td id="dayTotalHeures">0,00</td>
+            <td id="dayTotalSupp">0,00</td>
+            <td id="dayTotalTransport">0</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <details class="params">
+        <summary>Paramètres (taux) — préremplis avec tes vraies conditions Randstad</summary>
+        <div class="grid2">
+          <label>Taux horaire brut (€/h)
+            <input type="number" id="tauxHoraire" min="0" step="0.0001" value="12.3849">
+          </label>
+          <label>Majoration heures supp (%)
+            <input type="number" id="majorationSupp" min="0" step="1" value="50">
+          </label>
+        </div>
+        <div class="grid2">
+          <label>Seuil avant majoration (heures/jour)
+            <input type="number" id="seuilNormal" min="0" step="0.1" value="9">
+          </label>
+          <label>Taux ONSS (%)
+            <input type="number" id="tauxONSS" min="0" step="0.01" value="2.71">
+          </label>
+        </div>
+        <div class="grid2">
+          <label>Précompte professionnel (%)
+            <input type="number" id="tauxPrecompte" min="0" step="0.01" value="0">
+          </label>
+          <label>Indemnité transport / jour (€, net)
+            <input type="number" id="indemniteJour" min="0" step="0.01" value="6.90">
+          </label>
+        </div>
+        <div class="grid2">
+          <label style="grid-column: 1 / -1;">Note
+            <input type="text" id="note" placeholder="ex: RH Bxl, préparateur de commandes">
+          </label>
+        </div>
+      </details>
+
+      <div class="result-box" id="resultBox">
+        <div class="result-line"><span>Salaire brut</span><b id="rBrut">0,00 €</b></div>
+        <div class="result-line sub"><span>Cotisations ONSS</span><b id="rOnss">- 0,00 €</b></div>
+        <div class="result-line"><span>Salaire imposable</span><b id="rImposable">0,00 €</b></div>
+        <div class="result-line sub"><span>Précompte professionnel</span><b id="rPrecompte">- 0,00 €</b></div>
+        <div class="result-line"><span>Salaire net</span><b id="rNet">0,00 €</b></div>
+        <div class="result-line sub"><span>Indemnités nettes (transport)</span><b id="rIndemnites">+ 0,00 €</b></div>
+        <div class="result-line total"><span>Total à payer</span><b id="rTotal">0,00 €</b></div>
+      </div>
+
+      <button id="saveBtn" class="btn-primary">💾 Enregistrer cette semaine</button>
+      <p class="hint">Le calcul reproduit exactement la logique de tes fiches de paie Randstad (heures totales × taux + majoration sur les heures supp, ONSS, précompte, indemnités nettes).</p>
+    </div>
+  </section>
+
+  <!-- ===================== HISTORIQUE ===================== -->
+  <section id="hist" class="tab-content">
+    <div class="card">
+      <div class="row-between">
+        <h2>Historique des salaires</h2>
+        <div class="btn-group">
+          <button id="exportJson" class="btn-secondary">⬇️ Export JSON</button>
+          <button id="exportCsv" class="btn-secondary">⬇️ Export CSV</button>
+          <label class="btn-secondary file-btn">⬆️ Import JSON
+            <input type="file" id="importJson" accept="application/json" hidden>
+          </label>
+        </div>
+      </div>
+      <table id="histTable">
+        <thead>
+          <tr>
+            <th>Semaine</th><th>Jours</th><th>Heures</th><th>Brut</th><th>Net</th><th>Indemnités</th><th>Total</th><th>Budgétisé</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="histBody"></tbody>
+      </table>
+      <p id="histEmpty" class="hint">Aucune semaine enregistrée pour l'instant.</p>
+    </div>
+  </section>
+
+  <!-- ===================== TOTAUX ===================== -->
+  <section id="totaux" class="tab-content">
+    <div class="card">
+      <h2>Vue d'ensemble</h2>
+      <div class="stat-grid">
+        <div class="stat"><span>Total net cumulé</span><b id="statTotalNet">0,00 €</b></div>
+        <div class="stat"><span>Total brut cumulé</span><b id="statTotalBrut">0,00 €</b></div>
+        <div class="stat"><span>Moyenne / semaine (net+indemnités)</span><b id="statMoyenne">0,00 €</b></div>
+        <div class="stat"><span>Nombre de semaines</span><b id="statNbSemaines">0</b></div>
+      </div>
+
+      <h3>Ce mois-ci</h3>
+      <div class="stat-grid">
+        <div class="stat"><span>Total du mois</span><b id="statMois">0,00 €</b></div>
+        <div class="stat"><span>Heures du mois</span><b id="statHeuresMois">0</b></div>
+      </div>
+
+      <h3>Évolution (dernières semaines)</h3>
+      <canvas id="chart" height="180"></canvas>
+    </div>
+  </section>
+
+  <!-- ===================== BUDGET ===================== -->
+  <section id="budget" class="tab-content">
+    <div class="card">
+      <h2>Répartir mon argent</h2>
+      <p class="hint">Montant disponible = total des semaines pas encore réparties.</p>
+      <div class="stat-grid">
+        <div class="stat"><span>Montant disponible à répartir</span><b id="dispoAmount">0,00 €</b></div>
+      </div>
+
+      <h3>Catégories</h3>
+      <div id="categoriesBox"></div>
+      <button id="addCatBtn" class="btn-secondary">+ Ajouter une catégorie</button>
+      <div class="row-between" style="margin-top:10px;">
+        <span id="totalPct">Total: 0%</span>
+        <button id="repartirBtn" class="btn-primary">Répartir le montant disponible</button>
+      </div>
+
+      <h3>Cumul par catégorie</h3>
+      <div id="cumulBox" class="stat-grid"></div>
+
+      <h3>🎯 Objectif d'épargne</h3>
+      <div class="grid2">
+        <label>Montant objectif (€)
+          <input type="number" id="objMontant" min="0" step="1" value="0">
+        </label>
+        <label>Catégorie liée à l'épargne
+          <select id="objCategorie"></select>
+        </label>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar"><div id="objProgressFill" class="progress-fill"></div></div>
+        <span id="objProgressText">0 € / 0 €</span>
+      </div>
+      <p id="objEstimation" class="hint"></p>
+    </div>
+  </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
